@@ -1,0 +1,303 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+}
+
+enum LinkType {
+  GITHUB
+  DOCUMENTATION
+  FIGMA
+  EXTERNAL
+}
+
+enum TaskType {
+  FEATURE
+  BUG
+  MAINTENANCE
+  RESEARCH
+  INFRASTRUCTURE
+  TEST
+}
+
+enum TaskPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WEBHOOK
+}
+
+model User {
+  id                         String             @id @default(uuid())
+  name                       String
+  email                      String             @unique
+  passwordHash               String
+  role                       Role               @default(DEVELOPER)
+  active                     Boolean            @default(true)
+  changePasswordOnFirstLogin Boolean            @default(true)
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+  projects                   ProjectMember[]
+  assignedTasks              Task[]             @relation("Assignee")
+  timeLogs                   TimeLog[]
+  comments                   Comment[]
+  auditLogs                  AuditLog[]
+  attachments                Attachment[]
+  notifications              Notification[]
+  activities                 Activity[]
+  watchingTasks              TaskWatcher[]
+  securityLogs               SecurityAuditLog[]
+}
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  key         String          @unique // e.g. "MOB", "AUT", "WEB"
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  members     ProjectMember[]
+  tasks       Task[]
+  counter     ProjectCounter?
+}
+
+model ProjectCounter {
+  projectId  String  @id
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lastNumber Int     @default(0)
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  version   Int      @default(1) // Optimistic locking for membership updates
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model TaskStatus {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g. "To Do", "In Progress"
+  key       String   @unique // e.g. "TODO", "IN_PROGRESS"
+  color     String   // Hex code or styling class indicator
+  position  Int      // Order in Kanban board column (0, 1, 2...)
+  active    Boolean  @default(true)
+  protected Boolean  @default(false) // Core workflow statuses (BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE) cannot be deleted/disabled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tasks     Task[]
+}
+
+model TaskTransitionRule {
+  id          String   @id @default(uuid())
+  fromStatus  String
+  toStatus    String
+  roleAllowed Role     // Restrictions by role
+  createdAt   DateTime @default(now())
+
+  @@unique([fromStatus, toStatus, roleAllowed])
+}
+
+model Tag {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  tasks     TaskTag[]
+}
+
+model TaskTag {
+  taskId String
+  tagId  String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+}
+
+model Task {
+  id             String        @id @default(uuid())
+  taskNumber     Int          // Project-level incrementing identifier (1, 2, 3...)
+  taskKey        String        @unique // Globally unique human-readable key (e.g. "MOB-101")
+  title          String
+  description    String?       // Markdown support
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assigneeId     String?
+  assignee       User?         @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  type           TaskType      @default(FEATURE)
+  priority       TaskPriority  @default(MEDIUM)
+  statusKey      String
+  status         TaskStatus    @relation(fields: [statusKey], references: [key], onDelete: Restrict)
+  estimatedHours Float?
+  actualHours    Float         @default(0.0)
+  source         String?
+  dueDate        DateTime?
+  version        Int           @default(1) // Optimistic locking for Kanban drag-and-drop actions
+  parentTaskId   String?
+  parentTask     Task?         @relation("Subtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks       Task[]        @relation("Subtasks")
+  attachments    Attachment[]
+  comments       Comment[]
+  links          TaskLink[]
+  timeLogs       TimeLog[]
+  tags           TaskTag[]
+  activities     Activity[]
+  watchers       TaskWatcher[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?     // Soft delete support
+
+  @@unique([projectId, taskNumber])
+  @@index([projectId, deletedAt])
+  @@index([projectId, statusKey, deletedAt]) // Kanban queries
+  @@index([projectId, assigneeId])
+  @@index([assigneeId])
+  @@index([statusKey])
+  @@index([taskKey])
+  @@index([createdAt])
+  @@index([dueDate])
+}
+
+model TaskWatcher {
+  taskId    String
+  userId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([taskId, userId])
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  filename   String
+  filepath   String   // File storage relative path
+  mimetype   String
+  size       Int
+  uploaderId String
+  uploader   User     @relation(fields: [uploaderId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String   // Markdown support
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+}
+
+model TaskLink {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  url       String
+  title     String
+  type      LinkType @default(EXTERNAL)
+  createdAt DateTime @default(now())
+}
+
+model TimeLog {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hours       Float
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // e.g. "TASK_CREATED", "STATUS_CHANGED"
+  entityName String   // e.g. "Task", "User", "Project"
+  entityId   String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress  String?
+  userAgent  String?
+  details    Json     // Original/updated fields JSON snapshot
+  createdAt  DateTime @default(now())
+}
+
+model SecurityAuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "LOGIN_SUCCESS", "TOKEN_REUSE_DETECTED"
+  ipAddress String
+  userAgent String
+  details   Json?
+  createdAt DateTime @default(now())
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // User friendly change string: e.g. "assigned task", "logged 2 hours"
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  read      Boolean             @default(false)
+  channel   NotificationChannel @default(IN_APP)
+  createdAt DateTime            @default(now())
+
+  @@index([userId])
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model DomainEventLog {
+  id             String   @id @default(uuid())
+  type           String
+  payload        Json
+  status         String   // PENDING | PROCESSED | FAILED
+  retryCount     Int      @default(0)
+  idempotencyKey String   @unique
+  createdAt      DateTime @default(now())
+}
