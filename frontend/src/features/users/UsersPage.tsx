@@ -495,7 +495,7 @@ export const UsersPage: React.FC = () => {
                     value={projKey}
                     onChange={(e) => setProjKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                     helperText={t('projects.keyHint')}
-                    inputProps={{ maxLength: 10 }}
+                    slotProps={{ htmlInput: { maxLength: 10 } }}
                   />
                   <TextField
                     fullWidth
