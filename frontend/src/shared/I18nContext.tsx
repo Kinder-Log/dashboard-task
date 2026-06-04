@@ -1,0 +1,447 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+export type Language = 'en' | 'he';
+export type Direction = 'ltr' | 'rtl';
+
+interface I18nContextType {
+  language: Language;
+  direction: Direction;
+  t: (key: string, replacements?: Record<string, string | number>) => string;
+  setLanguage: (lang: Language) => void;
+}
+
+const translations: Record<Language, Record<string, string>> = {
+  en: {
+    // Auth / Login page
+    'login.title': 'Sign In',
+    'login.subtitle': 'Enter your credentials to access your dashboard',
+    'login.email': 'Email Address',
+    'login.password': 'Password',
+    'login.button': 'Sign In',
+    'login.signingIn': 'Signing in...',
+    'login.invalidCredentials': 'Invalid email or password',
+    // First login / Change password
+    'passwordReset.title': 'Change Password',
+    'passwordReset.subtitle': 'This is your first login. Please choose a new password.',
+    'passwordReset.newPassword': 'New Password',
+    'passwordReset.confirmPassword': 'Confirm Password',
+    'passwordReset.button': 'Update Password',
+    'passwordReset.updating': 'Updating password...',
+    'passwordReset.mismatch': 'Passwords do not match',
+    
+    // Sidebar / Layout
+    'sidebar.dashboard': 'Dashboard',
+    'sidebar.kanban': 'Kanban Board',
+    'sidebar.users': 'Users Management',
+    'sidebar.workspace': 'Workspace',
+    'sidebar.logout': 'Logout',
+    'sidebar.accountSettings': 'Account settings',
+    'sidebar.themeToggle': 'Toggle theme',
+    
+    // Dashboard page
+    'dashboard.title': 'Project Dashboard',
+    'dashboard.welcome': 'Welcome back, {name}',
+    'dashboard.overdueTasks': 'Overdue Tasks',
+    'dashboard.activeTasks': 'Active Tasks',
+    'dashboard.completedTasks': 'Completed Tasks',
+    'dashboard.loggedHours': 'Total Logged Hours',
+    'dashboard.workloadDistribution': 'Workload Distribution',
+    'dashboard.myTasks': 'My Tasks',
+    'dashboard.urgentTasks': 'Urgent Tasks',
+    'dashboard.recentActivity': 'Recent Activity',
+    'dashboard.noTasks': 'No tasks assigned to you',
+    'dashboard.noUrgentTasks': 'No urgent tasks',
+    'dashboard.noActivity': 'No recent activity',
+    'dashboard.activeProject': 'Active Project',
+    'dashboard.noMembers': 'No members assigned to this project yet.',
+    'dashboard.workloadActive': '{hours} hrs ({count} active tasks)',
+    'dashboard.taskWorkload': 'Est: {estimate}h | Logged: {logged}h',
+    'dashboard.assigneeLabel': 'Assignee: {name}',
+    'dashboard.dueLabel': 'Due: {date}',
+    'dashboard.selectProject': 'Please select a project to load dashboard statistics.',
+    
+    // Kanban page
+    'kanban.title': 'Kanban Board',
+    'kanban.addTask': 'Add Task',
+    'kanban.createTask': 'Create Task',
+    'kanban.editTask': 'Edit Task',
+    'kanban.deleteTask': 'Delete Task',
+    'kanban.taskTitle': 'Task Title',
+    'kanban.taskDesc': 'Task Description',
+    'kanban.assignee': 'Assignee',
+    'kanban.priority': 'Priority',
+    'kanban.dueDate': 'Due Date',
+    'kanban.estimate': 'Estimated Hours',
+    'kanban.cancel': 'Cancel',
+    'kanban.save': 'Save',
+    'kanban.create': 'Create',
+    'kanban.searchPlaceholder': 'Search tasks...',
+    'kanban.allAssignees': 'All Assignees',
+    'kanban.allPriorities': 'All Priorities',
+    'kanban.priority.low': 'Low',
+    'kanban.priority.medium': 'Medium',
+    'kanban.priority.high': 'High',
+    'kanban.priority.urgent': 'Urgent',
+    'kanban.priority.CRITICAL': 'Critical',
+    'kanban.priority.HIGH': 'High',
+    'kanban.priority.MEDIUM': 'Medium',
+    'kanban.priority.LOW': 'Low',
+    'kanban.type.BUG': 'Bug',
+    'kanban.type.FEATURE': 'Feature',
+    'kanban.type.MAINTENANCE': 'Maintenance',
+    'kanban.type.RESEARCH': 'Research',
+    'kanban.type.INFRASTRUCTURE': 'Infrastructure',
+    'kanban.type.TEST': 'Test',
+    'kanban.noDueDate': 'No due date',
+    'kanban.columnEmpty': 'Drag tasks here or add a new task',
+    
+    // Task details dialog
+    'taskDetails.title': 'Task Details',
+    'taskDetails.description': 'Description',
+    'taskDetails.noDescription': 'No description provided. Click to add one...',
+    'taskDetails.editDescription': 'Edit Description',
+    'taskDetails.links': 'Links & References',
+    'taskDetails.addLink': 'Add Link',
+    'taskDetails.linkLabel': 'Label',
+    'taskDetails.linkUrl': 'URL',
+    'taskDetails.attachments': 'Attachments',
+    'taskDetails.addAttachment': 'Upload File',
+    'taskDetails.uploading': 'Uploading...',
+    'taskDetails.maxSizeLimit': 'File exceeds 25MB limit',
+    'taskDetails.timeTracking': 'Time Tracking',
+    'taskDetails.loggedTime': 'Logged: {logged}h / Estimate: {estimate}h',
+    'taskDetails.logTime': 'Log Time',
+    'taskDetails.logTimeHours': 'Hours to log',
+    'taskDetails.logTimeComment': 'Comment (optional)',
+    'taskDetails.activityLog': 'Activity Log & Comments',
+    'taskDetails.addComment': 'Write a comment...',
+    'taskDetails.postComment': 'Comment',
+    'taskDetails.created': 'created the task',
+    'taskDetails.changedStatus': 'changed status to {status}',
+    'taskDetails.changedAssignee': 'assigned task to {assignee}',
+    'taskDetails.unassigned': 'unassigned task',
+    'taskDetails.loggedHoursActivity': 'logged {hours} hours: {comment}',
+    'taskDetails.uploadedFile': 'Uploaded file: {name} ({size} MB)',
+    'taskDetails.loadError': 'Failed to load task details. Please close and try again.',
+    'taskDetails.noAttachments': 'No attachments.',
+    'taskDetails.uploadedBy': 'Uploaded by: {name} | {size} MB',
+    'taskDetails.noLinks': 'No links defined.',
+    'taskDetails.addCommentLabel': 'Add Comment',
+    'taskDetails.noActivity': 'No activity logged yet.',
+    'taskDetails.system': 'System',
+    'taskDetails.taskFields': 'Task Fields',
+    'taskDetails.taskType': 'Task Type',
+    'taskDetails.progress': 'Progress Tracker',
+    'taskDetails.ofTarget': 'of target',
+    'taskDetails.hours': 'Hours',
+    'taskDetails.workDescription': 'Work description...',
+    'taskDetails.tags': 'Tags',
+    'taskDetails.noTags': 'No tags.',
+    'kanban.status': 'Status',
+    'kanban.unassigned': 'Unassigned',
+    'kanban.taskStatusUpdated': 'Task status updated successfully.',
+    'kanban.concurrencyError': 'Error: Task was updated by another user. Reloading board...',
+    'kanban.statusUpdateFailed': 'Failed to update task status.',
+    'kanban.taskCreatedSuccessfully': 'Task created successfully.',
+    'kanban.taskCreationFailed': 'Failed to create task.',
+    'kanban.titleRequired': 'Title is required.',
+    'kanban.type': 'Type',
+    'kanban.allTypes': 'All Types',
+    'kanban.clearFilters': 'Clear Filters',
+    
+    // Admin / Users & Settings
+    'users.title': 'Users & Settings',
+    'users.tabs.users': 'User Accounts',
+    'users.tabs.statuses': 'Kanban Column Configuration',
+    'users.createUser': 'Create User',
+    'users.name': 'Full Name',
+    'users.role': 'System Role',
+    'users.status': 'Account Status',
+    'users.actions': 'Actions',
+    'users.active': 'Active',
+    'users.inactive': 'Inactive',
+    'users.role.admin': 'Admin',
+    'users.role.user': 'User',
+    'users.role.projectManager': 'Project Manager',
+    'users.role.developer': 'Developer',
+    'users.statusName': 'Column/Status Name',
+    'users.statusColor': 'Color (Hex)',
+    'users.statusOrder': 'Sort Order',
+    'users.addStatus': 'Add Column',
+    'users.editStatus': 'Edit Column',
+    'users.createdSuccessfully': 'User created successfully.',
+    'users.creationFailed': 'Failed to create user.',
+    'users.updatedSuccessfully': 'User permissions updated successfully.',
+    'users.updateFailed': 'Failed to update user.',
+    'users.statusSavedSuccessfully': 'Kanban column configuration saved successfully.',
+    'users.statusSaveFailed': 'Failed to update column configuration.',
+    'users.allFieldsRequired': 'All fields are required.',
+    'users.initialPassword': 'Initial Password',
+    'users.userColumn': 'User',
+    'users.emailColumn': 'Email',
+    'users.systemProtected': 'System Protected',
+    'users.statusKey': 'Workflow Key',
+    'users.tabs.projects': 'Projects Management',
+    'projects.create': 'Create Project',
+    'projects.createProject': 'Create Project',
+    'projects.name': 'Project Name',
+    'projects.key': 'Project Key',
+    'projects.keyHint': '2-10 uppercase letters/digits, e.g. PROJ',
+    'projects.description': 'Description',
+    'projects.createdSuccessfully': 'Project created successfully.',
+    'projects.creationFailed': 'Failed to create project.',
+    'projects.deletedSuccessfully': 'Project deleted successfully.',
+    'projects.deletionFailed': 'Failed to delete project.',
+    'projects.confirmDelete': 'Are you sure you want to delete this project? This will permanently delete all tasks, comments, and time logs associated with it.',
+    'projects.confirmDeleteTitle': 'Delete Project?',
+    'projects.confirmDeleteBody': 'This action is irreversible. All tasks, comments, and time logs associated with this project will be permanently deleted.',
+    'projects.cancel': 'Cancel',
+    'projects.delete': 'Delete',
+    'projects.nameRequired': 'Project name is required.',
+    'projects.keyRequired': 'Project key is required.',
+    'projects.keyInvalid': 'Key must be alphanumeric, 2-10 characters.',
+    'projects.nameAndKeyRequired': 'Project name and key are required.',
+    'projects.noProjects': 'No projects found. Create your first project.',
+  },
+  he: {
+    // Auth / Login page
+    'login.title': 'התחברות למערכת',
+    'login.subtitle': 'הזן את פרטי הגישה שלך כדי להיכנס ללוח הבקרה',
+    'login.email': 'כתובת אימייל',
+    'login.password': 'סיסמה',
+    'login.button': 'התחברות',
+    'login.signingIn': 'מתחבר...',
+    'login.invalidCredentials': 'אימייל או סיסמה לא נכונים',
+    // First login / Change password
+    'passwordReset.title': 'שינוי סיסמה',
+    'passwordReset.subtitle': 'זוהי ההתחברות הראשונה שלך. אנא בחר סיסמה חדשה.',
+    'passwordReset.newPassword': 'סיסמה חדשה',
+    'passwordReset.confirmPassword': 'אימות סיסמה',
+    'passwordReset.button': 'עדכן סיסמה',
+    'passwordReset.updating': 'מעדכן סיסמה...',
+    'passwordReset.mismatch': 'הסיסמאות אינן תואמות',
+    
+    // Sidebar / Layout
+    'sidebar.dashboard': 'לוח בקרה',
+    'sidebar.kanban': 'לוח קנבן',
+    'sidebar.users': 'ניהול משתמשים',
+    'sidebar.workspace': 'סביבת עבודה',
+    'sidebar.logout': 'התנתק',
+    'sidebar.accountSettings': 'הגדרות חשבון',
+    'sidebar.themeToggle': 'שנה מצב תצוגה',
+    
+    // Dashboard page
+    'dashboard.title': 'לוח בקרה לפרויקט',
+    'dashboard.welcome': 'ברוך שובך, {name}',
+    'dashboard.overdueTasks': 'משימות באיחור',
+    'dashboard.activeTasks': 'משימות פעילות',
+    'dashboard.completedTasks': 'משימות שהושלמו',
+    'dashboard.loggedHours': 'סה״כ שעות עבודה',
+    'dashboard.workloadDistribution': 'חלוקת עומס עבודה',
+    'dashboard.myTasks': 'המשימות שלי',
+    'dashboard.urgentTasks': 'משימות דחופות',
+    'dashboard.recentActivity': 'פעילות אחרונה',
+    'dashboard.noTasks': 'אין משימות המשויכות אליך',
+    'dashboard.noUrgentTasks': 'אין משימות דחופות',
+    'dashboard.noActivity': 'אין פעילות אחרונה',
+    'dashboard.activeProject': 'פרויקט פעיל',
+    'dashboard.noMembers': 'אין חברים בפרויקט זה עדיין.',
+    'dashboard.workloadActive': '{hours} שעות ({count} משימות פעילות)',
+    'dashboard.taskWorkload': 'הערכה: {estimate} שעות | דווחו: {logged} שעות',
+    'dashboard.assigneeLabel': 'משויך ל: {name}',
+    'dashboard.dueLabel': 'יעד: {date}',
+    'dashboard.selectProject': 'אנא בחר פרויקט כדי להציג את נתוני לוח הבקרה.',
+    
+    // Kanban page
+    'kanban.title': 'לוח קנבן',
+    'kanban.addTask': 'הוסף משימה',
+    'kanban.createTask': 'יצירת משימה',
+    'kanban.editTask': 'עריכת משימה',
+    'kanban.deleteTask': 'מחיקת משימה',
+    'kanban.taskTitle': 'כותרת המשימה',
+    'kanban.taskDesc': 'תיאור המשימה',
+    'kanban.assignee': 'משתמש אחראי',
+    'kanban.priority': 'עדיפות',
+    'kanban.dueDate': 'תאריך יעד',
+    'kanban.estimate': 'הערכת שעות',
+    'kanban.cancel': 'ביטול',
+    'kanban.save': 'שמירה',
+    'kanban.create': 'צור משימה',
+    'kanban.searchPlaceholder': 'חיפוש משימות...',
+    'kanban.allAssignees': 'כל המשתמשים',
+    'kanban.allPriorities': 'כל העדיפויות',
+    'kanban.priority.low': 'נמוכה',
+    'kanban.priority.medium': 'בינונית',
+    'kanban.priority.high': 'גבוהה',
+    'kanban.priority.urgent': 'דחופה',
+    'kanban.priority.CRITICAL': 'קריטית',
+    'kanban.priority.HIGH': 'גבוהה',
+    'kanban.priority.MEDIUM': 'בינונית',
+    'kanban.priority.LOW': 'נמוכה',
+    'kanban.type.BUG': 'באג',
+    'kanban.type.FEATURE': 'תכונה',
+    'kanban.type.MAINTENANCE': 'תחזוקה',
+    'kanban.type.RESEARCH': 'מחקר',
+    'kanban.type.INFRASTRUCTURE': 'תשתית',
+    'kanban.type.TEST': 'בדיקות',
+    'kanban.noDueDate': 'אין תאריך יעד',
+    'kanban.columnEmpty': 'גרור משימות לכאן או הוסף משימה חדשה',
+    
+    // Task details dialog
+    'taskDetails.title': 'פרטי משימה',
+    'taskDetails.description': 'תיאור',
+    'taskDetails.noDescription': 'לא סופק תיאור למשימה. לחץ כדי להוסיף...',
+    'taskDetails.editDescription': 'ערוך תיאור',
+    'taskDetails.links': 'קישורים ומקורות מידע',
+    'taskDetails.addLink': 'הוסף קישור',
+    'taskDetails.linkLabel': 'תווית',
+    'taskDetails.linkUrl': 'כתובת (URL)',
+    'taskDetails.attachments': 'קבצים מצורפים',
+    'taskDetails.addAttachment': 'העלה קובץ',
+    'taskDetails.uploading': 'מעלה קובץ...',
+    'taskDetails.maxSizeLimit': 'הקובץ חורג ממגבלת 25MB',
+    'taskDetails.timeTracking': 'דיווח שעות',
+    'taskDetails.loggedTime': 'דווחו: {logged} שעות / הערכה: {estimate} שעות',
+    'taskDetails.logTime': 'דווח שעות',
+    'taskDetails.logTimeHours': 'שעות לדיווח',
+    'taskDetails.logTimeComment': 'הערה (אופציונלי)',
+    'taskDetails.activityLog': 'פעילות אחרונה ותגובות',
+    'taskDetails.addComment': 'כתוב תגובה...',
+    'taskDetails.postComment': 'שלח תגובה',
+    'taskDetails.created': 'יצר את המשימה',
+    'taskDetails.changedStatus': 'שינה את הסטטוס ל-{status}',
+    'taskDetails.changedAssignee': 'שייך את המשימה ל-{assignee}',
+    'taskDetails.unassigned': 'הסיר שיוך משימה',
+    'taskDetails.loggedHoursActivity': 'דיווח {hours} שעות: {comment}',
+    'taskDetails.uploadedFile': 'העלה קובץ: {name} ({size} MB)',
+    'taskDetails.loadError': 'טעינת פרטי המשימה נכשלה. אנא סגור ונסה שוב.',
+    'taskDetails.noAttachments': 'אין קבצים מצורפים.',
+    'taskDetails.uploadedBy': 'הועלה על ידי: {name} | {size} MB',
+    'taskDetails.noLinks': 'אין קישורים מוגדרים.',
+    'taskDetails.addCommentLabel': 'הוסף תגובה',
+    'taskDetails.noActivity': 'אין פעילות מתועדת עדיין.',
+    'taskDetails.system': 'מערכת',
+    'taskDetails.taskFields': 'שדות משימה',
+    'taskDetails.taskType': 'סוג משימה',
+    'taskDetails.progress': 'מד התקדמות',
+    'taskDetails.ofTarget': 'מהיעד',
+    'taskDetails.hours': 'שעות',
+    'taskDetails.workDescription': 'תיאור עבודה...',
+    'taskDetails.tags': 'תגיות',
+    'taskDetails.noTags': 'אין תגיות.',
+    'kanban.status': 'סטטוס',
+    'kanban.unassigned': 'ללא שיוך',
+    'kanban.taskStatusUpdated': 'סטטוס המשימה עודכן בהצלחה.',
+    'kanban.concurrencyError': 'שגיאה: המשימה עודכנה על ידי משתמש אחר. טוען מחדש את הלוח...',
+    'kanban.statusUpdateFailed': 'עדכון סטטוס המשימה נכשל.',
+    'kanban.taskCreatedSuccessfully': 'המשימה נוצרה בהצלחה.',
+    'kanban.taskCreationFailed': 'יצירת המשימה נכשלה.',
+    'kanban.titleRequired': 'חובה להזין כותרת.',
+    'kanban.type': 'סוג',
+    'kanban.allTypes': 'כל הסוגים',
+    'kanban.clearFilters': 'נקה מסננים',
+    
+    // Admin / Users & Settings
+    'users.title': 'משתמשים והגדרות',
+    'users.tabs.users': 'חשבונות משתמשים',
+    'users.tabs.statuses': 'תצורת עמודות קנבן',
+    'users.createUser': 'יצירת משתמש',
+    'users.name': 'שם מלא',
+    'users.role': 'תפקיד במערכת',
+    'users.status': 'סטטוס חשבון',
+    'users.actions': 'פעולות',
+    'users.active': 'פעיל',
+    'users.inactive': 'לא פעיל',
+    'users.role.admin': 'מנהל',
+    'users.role.user': 'משתמש',
+    'users.role.projectManager': 'מנהל פרויקט',
+    'users.role.developer': 'מפתח זרימת עבודה',
+    'users.statusName': 'שם עמודה/סטטוס',
+    'users.statusColor': 'צבע (Hex)',
+    'users.statusOrder': 'סדר תצוגה',
+    'users.addStatus': 'הוסף עמודה',
+    'users.editStatus': 'ערוך עמודה',
+    'users.createdSuccessfully': 'משתמש נוצר בהצלחה.',
+    'users.creationFailed': 'יצירת משתמש נכשלה.',
+    'users.updatedSuccessfully': 'הרשאות משתמש עודכנו בהצלחה.',
+    'users.updateFailed': 'עדכון משתמש נכשל.',
+    'users.statusSavedSuccessfully': 'תצורת עמודת קנבן נשמרה בהצלחה.',
+    'users.statusSaveFailed': 'עדכון תצורת העמודה נכשל.',
+    'users.allFieldsRequired': 'כל השדות הם חובה.',
+    'users.initialPassword': 'סיסמה ראשונית',
+    'users.userColumn': 'משתמש',
+    'users.emailColumn': 'אימייל',
+    'users.systemProtected': 'מוגן מערכת',
+    'users.statusKey': 'מפתח זרימת עבודה',
+    'users.tabs.projects': 'ניהול פרויקטים',
+    'projects.create': 'יצירת פרויקט',
+    'projects.createProject': 'יצירת פרויקט',
+    'projects.name': 'שם הפרויקט',
+    'projects.key': 'מפתח פרויקט',
+    'projects.keyHint': '2-10 אותיות/ספרות באנגלית, לדוגמה: PROJ',
+    'projects.description': 'תיאור',
+    'projects.createdSuccessfully': 'הפרויקט נוצר בהצלחה.',
+    'projects.creationFailed': 'יצירת הפרויקט נכשלה.',
+    'projects.deletedSuccessfully': 'הפרויקט נמחק בהצלחה.',
+    'projects.deletionFailed': 'מחיקת הפרויקט נכשלה.',
+    'projects.confirmDelete': 'האם אתה בטוח שברצונך למחוק את הפרויקט? פעולה זו תמחק לצמיתות את כל המשימות, התגובות ודיווחי השעות המשויכים אליו.',
+    'projects.confirmDeleteTitle': 'מחיקת פרויקט?',
+    'projects.confirmDeleteBody': 'פעולה זו אינה הפיכה. כל המשימות, התגובות ודיווחי השעות המשויכים לפרויקט זה יימחקו לצמיתות.',
+    'projects.cancel': 'ביטול',
+    'projects.delete': 'מחיקה',
+    'projects.nameRequired': 'חובה להזין שם פרויקט.',
+    'projects.keyRequired': 'חובה להזין מפתח פרויקט.',
+    'projects.keyInvalid': 'המפתח חייב להכיל בין 2 ל-10 תווים באנגלית/מספרים בלבד.',
+    'projects.nameAndKeyRequired': 'שם ומפתח הפרויקט הם שדות חובה.',
+    'projects.noProjects': 'לא נמצאו פרויקטים. צור את הפרויקט הראשון שלך.',
+  }
+};
+
+const I18nContext = createContext<I18nContextType | undefined>(undefined);
+
+export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [language, setLang] = useState<Language>(() => {
+    const saved = localStorage.getItem('app_language');
+    return (saved === 'en' || saved === 'he') ? saved : 'en';
+  });
+
+  const direction: Direction = language === 'he' ? 'rtl' : 'ltr';
+
+  useEffect(() => {
+    // Set html attributes
+    document.documentElement.dir = direction;
+    document.documentElement.lang = language;
+  }, [language, direction]);
+
+  const setLanguage = (lang: Language) => {
+    setLang(lang);
+    localStorage.setItem('app_language', lang);
+  };
+
+  const t = (key: string, replacements?: Record<string, string | number>): string => {
+    const dict = translations[language] || translations['en'];
+    let text = dict[key] || translations['en'][key] || key;
+
+    if (replacements) {
+      Object.entries(replacements).forEach(([k, val]) => {
+        text = text.replace(`{${k}}`, String(val));
+      });
+    }
+
+    return text;
+  };
+
+  return (
+    <I18nContext.Provider value={{ language, direction, t, setLanguage }}>
+      {children}
+    </I18nContext.Provider>
+  );
+};
+
+export const useI18n = () => {
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error('useI18n must be used within an I18nProvider');
+  }
+  return context;
+};

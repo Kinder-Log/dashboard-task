@@ -1,0 +1,78 @@
+:root {
+  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  
+  /* Modern styling variables */
+  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-backdrop-filter: blur(12px) saturate(180%);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: #0b0f19; /* Rich dark blue-black base */
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+/* Pulse animation for skeletons */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .4;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(22, 28, 45, 0.6) !important;
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.4) !important;
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+  transition: var(--transition-smooth);
+}
+
+.glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.5);
+}

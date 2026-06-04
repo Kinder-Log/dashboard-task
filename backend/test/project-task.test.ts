@@ -155,4 +155,29 @@ describe('Project and Task Integration Tests', () => {
 
     expect(listRes.body.data.length).toBe(0);
   });
+
+  it('should deny project deletion to developer user', async () => {
+    const res = await request(app)
+      .delete(`/api/projects/${projectId}`)
+      .set('Authorization', `Bearer ${devToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('should delete project successfully as Admin', async () => {
+    const res = await request(app)
+      .delete(`/api/projects/${projectId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.message).toContain('deleted');
+
+    // Verify project details returns 404
+    const detailsRes = await request(app)
+      .get(`/api/projects/${projectId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(detailsRes.status).toBe(404);
+  });
 });

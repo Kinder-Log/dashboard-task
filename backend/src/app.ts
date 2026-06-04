@@ -4,6 +4,9 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import taskRoutes from './routes/task.routes.js';
+import attachmentRoutes from './routes/attachment.routes.js';
+import userRoutes from './routes/user.routes.js';
+import { eventWorkerService } from './services/event-worker.js';
 import { errorHandler } from './middlewares/error.js';
 import { authenticateJWT, requireRole } from './middlewares/auth.js';
 import { Role } from '@prisma/client';
@@ -28,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/attachments', attachmentRoutes);
+app.use('/api/users', userRoutes);
 
 // Integration test/verification check route
 app.get('/api/health', (req, res) => {
@@ -55,6 +60,7 @@ app.use(errorHandler);
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`[Jira Server] running on http://localhost:${PORT}`);
+    eventWorkerService.start();
   });
 }
 

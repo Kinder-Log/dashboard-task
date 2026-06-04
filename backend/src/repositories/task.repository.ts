@@ -1,4 +1,4 @@
-import { Task, Prisma, TaskPriority, TaskType } from '@prisma/client';
+import { Task, Prisma, TaskPriority, TaskType, TaskStatus, Comment, TaskLink, LinkType } from '@prisma/client';
 import prisma from '../config/db.js';
 import { AppError } from '../types/api.js';
 
@@ -19,6 +19,15 @@ export interface ITaskRepository {
   update(id: string, version: number, data: Prisma.TaskUncheckedUpdateInput): Promise<Task>;
   archive(id: string): Promise<void>;
   listActive(filters: TaskFilters, skip: number, take: number): Promise<{ tasks: Task[]; total: number }>;
+  listStatuses(): Promise<TaskStatus[]>;
+  listAllStatuses(): Promise<TaskStatus[]>;
+  updateStatus(key: string, data: Prisma.TaskStatusUpdateInput): Promise<TaskStatus>;
+  addComment(taskId: string, authorId: string, content: string): Promise<Comment>;
+  deleteComment(commentId: string): Promise<void>;
+  findComment(commentId: string): Promise<Comment | null>;
+  addLink(taskId: string, url: string, title: string, type: LinkType): Promise<TaskLink>;
+  deleteLink(linkId: string): Promise<void>;
+  findLink(linkId: string): Promise<TaskLink | null>;
 }
 
 export class TaskRepository implements ITaskRepository {
@@ -36,6 +45,33 @@ export class TaskRepository implements ITaskRepository {
           where: { deletedAt: null },
           include: { assignee: { select: { id: true, name: true, role: true } } }
         },
+        comments: {
+          include: {
+            author: { select: { id: true, name: true, email: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        attachments: {
+          include: {
+            uploader: { select: { id: true, name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        timeLogs: {
+          include: {
+            user: { select: { id: true, name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        links: {
+          orderBy: { createdAt: 'desc' }
+        },
+        activities: {
+          include: {
+            user: { select: { id: true, name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
       },
     });
   }
@@ -144,6 +180,74 @@ export class TaskRepository implements ITaskRepository {
     ]);
 
     return { tasks, total };
+  }
+
+  public async listStatuses(): Promise<TaskStatus[]> {
+    return prisma.taskStatus.findMany({
+      where: { active: true },
+      orderBy: { position: 'asc' },
+    });
+  }
+
+  public async listAllStatuses(): Promise<TaskStatus[]> {
+    return prisma.taskStatus.findMany({
+      orderBy: { position: 'asc' },
+    });
+  }
+
+  public async updateStatus(key: string, data: Prisma.TaskStatusUpdateInput): Promise<TaskStatus> {
+    return prisma.taskStatus.update({
+      where: { key },
+      data,
+    });
+  }
+
+  public async addComment(taskId: string, authorId: string, content: string): Promise<Comment> {
+    return prisma.comment.create({
+      data: {
+        taskId,
+        authorId,
+        content,
+      },
+      include: {
+        author: { select: { id: true, name: true, email: true } }
+      }
+    });
+  }
+
+  public async deleteComment(commentId: string): Promise<void> {
+    await prisma.comment.delete({
+      where: { id: commentId },
+    });
+  }
+
+  public async findComment(commentId: string): Promise<Comment | null> {
+    return prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+  }
+
+  public async addLink(taskId: string, url: string, title: string, type: LinkType): Promise<TaskLink> {
+    return prisma.taskLink.create({
+      data: {
+        taskId,
+        url,
+        title,
+        type,
+      },
+    });
+  }
+
+  public async deleteLink(linkId: string): Promise<void> {
+    await prisma.taskLink.delete({
+      where: { id: linkId },
+    });
+  }
+
+  public async findLink(linkId: string): Promise<TaskLink | null> {
+    return prisma.taskLink.findUnique({
+      where: { id: linkId },
+    });
   }
 }
 

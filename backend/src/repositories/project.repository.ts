@@ -12,6 +12,7 @@ export interface IProjectRepository {
   addMember(projectId: string, userId: string): Promise<ProjectMember>;
   removeMember(projectId: string, userId: string): Promise<void>;
   findMember(projectId: string, userId: string): Promise<ProjectMember | null>;
+  delete(id: string): Promise<void>;
 }
 
 export class ProjectRepository implements IProjectRepository {
@@ -118,6 +119,12 @@ export class ProjectRepository implements IProjectRepository {
           userId,
         },
       },
+    });
+  }
+
+  public async delete(id: string): Promise<void> {
+    await prisma.project.delete({
+      where: { id },
     });
   }
 }

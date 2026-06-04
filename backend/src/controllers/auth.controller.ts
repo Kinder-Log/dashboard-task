@@ -215,3 +215,52 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
     next(error);
   }
 }
+
+const ChangePasswordSchema = z.object({
+  password: z.string().min(SECURITY_CONFIG.PASSWORD_MIN_LENGTH, `Password must be at least ${SECURITY_CONFIG.PASSWORD_MIN_LENGTH} characters`),
+});
+
+export async function changePassword(req: Request, res: Response, next: NextFunction) {
+  const ipAddress = req.ip || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const parsed = ChangePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid password format', 400, parsed.error.format());
+    }
+
+    const { password } = parsed.data;
+
+    // Hash password
+    const salt = await bcrypt.genSalt(SECURITY_CONFIG.BCRYPT_SALT_ROUNDS);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Update user in DB
+    await userRepository.update(userId, {
+      passwordHash,
+      changePasswordOnFirstLogin: false,
+    });
+
+    await securityService.logSecurityEvent({
+      userId,
+      action: 'LOGIN_SUCCESS', // Keep under success events track
+      ipAddress,
+      userAgent,
+      details: { action: 'PASSWORD_CHANGED' },
+    });
+
+    res.json({
+      data: {
+        message: 'Password changed successfully',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}

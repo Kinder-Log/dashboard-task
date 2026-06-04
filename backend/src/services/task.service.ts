@@ -1,4 +1,4 @@
-import { Role, Task, TaskType, TaskPriority } from '@prisma/client';
+import { Role, Task, TaskType, TaskPriority, TaskStatus, Comment, TaskLink, LinkType } from '@prisma/client';
 import { taskRepository, TaskFilters } from '../repositories/task.repository.js';
 import { projectRepository } from '../repositories/project.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
@@ -300,6 +300,125 @@ export class TaskService {
   ): Promise<Task> {
     const task = await authorizationService.authorizeTaskAccess(ctx, id, 'TASK_READ');
     return task;
+  }
+
+  public async listStatuses(): Promise<TaskStatus[]> {
+    return taskRepository.listStatuses();
+  }
+
+  public async listAllStatuses(ctx: AuthorizationContext): Promise<TaskStatus[]> {
+    if (ctx.role !== Role.ADMIN) {
+      throw new AppError('FORBIDDEN', 'Access denied: only Administrators can list all statuses', 403);
+    }
+    return taskRepository.listAllStatuses();
+  }
+
+  public async updateStatus(
+    ctx: AuthorizationContext,
+    key: string,
+    dto: { name?: string; color?: string; position?: number; active?: boolean }
+  ): Promise<TaskStatus> {
+    if (ctx.role !== Role.ADMIN) {
+      throw new AppError('FORBIDDEN', 'Access denied: only Administrators can configure task statuses', 403);
+    }
+
+    const status = await prisma.taskStatus.findUnique({ where: { key } });
+    if (!status) {
+      throw new AppError('RESOURCE_NOT_FOUND', 'Status not found', 404);
+    }
+
+    if (status.protected && dto.active === false) {
+      throw new AppError('VALIDATION_ERROR', 'Protected core workflow statuses cannot be de-activated', 400);
+    }
+
+    return taskRepository.updateStatus(key, dto);
+  }
+
+  public async addComment(
+    ctx: AuthorizationContext,
+    taskId: string,
+    content: string
+  ): Promise<Comment> {
+    // 1. Verify task access
+    await authorizationService.authorizeTaskAccess(ctx, taskId, 'TASK_READ');
+
+    // 2. Add comment
+    const comment = await taskRepository.addComment(taskId, ctx.userId, content);
+
+    // 3. Log activity
+    await prisma.activity.create({
+      data: {
+        taskId,
+        userId: ctx.userId,
+        action: 'added comment',
+        details: content.substring(0, 100),
+      }
+    });
+
+    return comment;
+  }
+
+  public async deleteComment(
+    ctx: AuthorizationContext,
+    commentId: string
+  ): Promise<void> {
+    const comment = await taskRepository.findComment(commentId);
+    if (!comment) {
+      throw new AppError('RESOURCE_NOT_FOUND', 'Comment not found', 404);
+    }
+
+    // 1. Verify task access
+    await authorizationService.authorizeTaskAccess(ctx, comment.taskId, 'TASK_READ');
+
+    // 2. Enforce only author, Admin, or PM can delete a comment
+    const isAuthor = comment.authorId === ctx.userId;
+    const isPrivileged = ctx.role === Role.ADMIN || ctx.role === Role.PROJECT_MANAGER;
+
+    if (!isAuthor && !isPrivileged) {
+      throw new AppError('FORBIDDEN', 'Access denied: you can only delete your own comments', 403);
+    }
+
+    await taskRepository.deleteComment(commentId);
+  }
+
+  public async addLink(
+    ctx: AuthorizationContext,
+    taskId: string,
+    url: string,
+    title: string,
+    type: LinkType
+  ): Promise<TaskLink> {
+    // 1. Verify task write access
+    await authorizationService.authorizeTaskAccess(ctx, taskId, 'TASK_UPDATE');
+
+    const link = await taskRepository.addLink(taskId, url, title, type);
+
+    // 2. Log activity
+    await prisma.activity.create({
+      data: {
+        taskId,
+        userId: ctx.userId,
+        action: 'added link',
+        details: `${title} (${url})`,
+      }
+    });
+
+    return link;
+  }
+
+  public async deleteLink(
+    ctx: AuthorizationContext,
+    linkId: string
+  ): Promise<void> {
+    const link = await taskRepository.findLink(linkId);
+    if (!link) {
+      throw new AppError('RESOURCE_NOT_FOUND', 'Task link not found', 404);
+    }
+
+    // 1. Verify task write access
+    await authorizationService.authorizeTaskAccess(ctx, link.taskId, 'TASK_UPDATE');
+
+    await taskRepository.deleteLink(linkId);
   }
 }
 

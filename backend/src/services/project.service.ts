@@ -113,6 +113,51 @@ export class ProjectService {
     }
     return project;
   }
+
+  public async getProjectActivities(
+    ctx: AuthorizationContext,
+    projectId: string,
+    limit: number = 20
+  ): Promise<any[]> {
+    await authorizationService.authorizeProjectAccess(ctx, projectId, 'PROJECT_VIEW');
+    return prisma.activity.findMany({
+      where: {
+        task: {
+          projectId,
+        },
+      },
+      take: limit,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        user: {
+          select: { id: true, name: true },
+        },
+        task: {
+          select: { id: true, taskKey: true, title: true },
+        },
+      },
+    });
+  }
+
+  public async deleteProject(
+    ctx: AuthorizationContext,
+    projectId: string
+  ): Promise<void> {
+    if (ctx.role !== Role.ADMIN) {
+      throw new AppError('FORBIDDEN', 'Access denied: only Administrators can delete projects', 403);
+    }
+
+    const project = await projectRepository.findById(projectId);
+    if (!project) {
+      throw new AppError('RESOURCE_NOT_FOUND', 'Project not found', 404);
+    }
+
+    await projectRepository.delete(projectId);
+  }
 }
+
+import prisma from '../config/db.js';
 
 export const projectService = new ProjectService();

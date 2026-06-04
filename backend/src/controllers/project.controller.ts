@@ -113,3 +113,40 @@ export async function removeMember(req: Request, res: Response, next: NextFuncti
     next(error);
   }
 }
+
+export async function getProjectActivities(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { id } = req.params;
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const activities = await projectService.getProjectActivities(req.user, id, limit);
+
+    res.json({
+      data: activities,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteProject(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { id } = req.params;
+    await projectService.deleteProject(req.user, id);
+
+    res.json({
+      data: { message: 'Project deleted successfully' },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

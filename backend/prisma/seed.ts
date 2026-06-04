@@ -92,10 +92,10 @@ async function main() {
   const devPasswordHash = await bcrypt.hash('dev12345', saltRounds);
 
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@localhost' },
+    where: { email: 'admin@example.com' },
     update: {},
     create: {
-      email: 'admin@localhost',
+      email: 'admin@example.com',
       name: 'System Admin',
       passwordHash: adminPasswordHash,
       role: Role.ADMIN,
@@ -105,10 +105,10 @@ async function main() {
   });
 
   const pm = await prisma.user.upsert({
-    where: { email: 'pm@localhost' },
+    where: { email: 'pm@example.com' },
     update: {},
     create: {
-      email: 'pm@localhost',
+      email: 'pm@example.com',
       name: 'Project Manager Netanel',
       passwordHash: pmPasswordHash,
       role: Role.PROJECT_MANAGER,
@@ -118,10 +118,10 @@ async function main() {
   });
 
   const dev1 = await prisma.user.upsert({
-    where: { email: 'dev1@localhost' },
+    where: { email: 'dev1@example.com' },
     update: {},
     create: {
-      email: 'dev1@localhost',
+      email: 'dev1@example.com',
       name: 'Developer Evyatar',
       passwordHash: devPasswordHash,
       role: Role.DEVELOPER,
@@ -131,10 +131,10 @@ async function main() {
   });
 
   const dev2 = await prisma.user.upsert({
-    where: { email: 'dev2@localhost' },
+    where: { email: 'dev2@example.com' },
     update: {},
     create: {
-      email: 'dev2@localhost',
+      email: 'dev2@example.com',
       name: 'Developer David',
       passwordHash: devPasswordHash,
       role: Role.DEVELOPER,

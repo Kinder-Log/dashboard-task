@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { TaskType, TaskPriority } from '@prisma/client';
+import { TaskType, TaskPriority, LinkType } from '@prisma/client';
 import { taskService } from '../services/task.service.js';
+import { timeTrackingService } from '../services/time-tracking.service.js';
+import { attachmentService } from '../services/attachment.service.js';
 import { AppError } from '../types/api.js';
 
 const CreateTaskSchema = z.object({
@@ -192,3 +194,196 @@ export async function deleteTask(req: Request, res: Response, next: NextFunction
     next(error);
   }
 }
+
+const LogTimeSchema = z.object({
+  hours: z.number().positive('Logged hours must be a positive number greater than 0'),
+  description: z.string().optional(),
+});
+
+export async function logTime(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { id } = req.params;
+    const parsed = LogTimeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid inputs schema', 400, parsed.error.format());
+    }
+
+    const { hours, description } = parsed.data;
+    const timeLog = await timeTrackingService.logTime(req.user, id, hours, description);
+
+    res.json({
+      data: timeLog,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function uploadAttachment(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      throw new AppError('VALIDATION_ERROR', 'No file uploaded', 400);
+    }
+
+    const attachment = await attachmentService.uploadAttachment(req.user, id, file);
+
+    res.json({
+      data: attachment,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listStatuses(req: Request, res: Response, next: NextFunction) {
+  try {
+    const statuses = await taskService.listStatuses();
+    res.json({
+      data: statuses,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+const AddCommentSchema = z.object({
+  content: z.string().min(1, 'Comment content cannot be empty'),
+});
+
+const AddLinkSchema = z.object({
+  url: z.string().url('Invalid URL format'),
+  title: z.string().min(1, 'Link title is required'),
+  type: z.nativeEnum(LinkType),
+});
+
+export async function addComment(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { id } = req.params;
+    const parsed = AddCommentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid inputs schema', 400, parsed.error.format());
+    }
+
+    const comment = await taskService.addComment(req.user, id, parsed.data.content);
+
+    res.json({
+      data: comment,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteComment(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { commentId } = req.params;
+    await taskService.deleteComment(req.user, commentId);
+
+    res.json({
+      data: { message: 'Comment deleted successfully' },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function addLink(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { id } = req.params;
+    const parsed = AddLinkSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid inputs schema', 400, parsed.error.format());
+    }
+
+    const { url, title, type } = parsed.data;
+    const link = await taskService.addLink(req.user, id, url, title, type);
+
+    res.json({
+      data: link,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteLink(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
+    const { linkId } = req.params;
+    await taskService.deleteLink(req.user, linkId);
+
+    res.json({
+      data: { message: 'Link deleted successfully' },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+const UpdateStatusSchema = z.object({
+  name: z.string().min(1).optional(),
+  color: z.string().min(1).optional(),
+  position: z.number().nonnegative().optional(),
+  active: z.boolean().optional(),
+});
+
+export async function listAllStatuses(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+    const statuses = await taskService.listAllStatuses(req.user);
+    res.json({
+      data: statuses,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      throw new AppError('UNAUTHORIZED', 'Authentication required', 401);
+    }
+    const { key } = req.params;
+    const parsed = UpdateStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid inputs schema', 400, parsed.error.format());
+    }
+    const updated = await taskService.updateStatus(req.user, key, parsed.data);
+    res.json({
+      data: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
