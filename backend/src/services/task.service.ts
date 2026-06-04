@@ -210,35 +210,46 @@ export class TaskService {
 
     // 4. Update task status inside transaction
     return transactionService.run(async (tx) => {
-      const updated = await tx.task.update({
-        where: { id, version },
-        data: {
-          statusKey: toStatusKey,
-          version: { increment: 1 },
-        },
-      });
+      try {
+        const updated = await tx.task.update({
+          where: { id, version },
+          data: {
+            statusKey: toStatusKey,
+            version: { increment: 1 },
+          },
+        });
 
-      // Log activity
-      await tx.activity.create({
-        data: {
-          taskId: id,
-          userId: ctx.userId,
-          action: 'changed status',
-          details: `From ${task.statusKey} to ${toStatusKey}`,
-        },
-      });
+        // Log activity
+        await tx.activity.create({
+          data: {
+            taskId: id,
+            userId: ctx.userId,
+            action: 'changed status',
+            details: `From ${task.statusKey} to ${toStatusKey}`,
+          },
+        });
 
-      // Queue domain event log for notification workers
-      await tx.domainEventLog.create({
-        data: {
-          type: 'TaskStatusChanged',
-          payload: { taskId: id, from: task.statusKey, to: toStatusKey, userId: ctx.userId },
-          status: 'PENDING',
-          idempotencyKey: `task-status-change-${id}-${version}`,
-        },
-      });
+        // Queue domain event log for notification workers
+        await tx.domainEventLog.create({
+          data: {
+            type: 'TaskStatusChanged',
+            payload: { taskId: id, from: task.statusKey, to: toStatusKey, userId: ctx.userId },
+            status: 'PENDING',
+            idempotencyKey: `task-status-change-${id}-${version}`,
+          },
+        });
 
-      return updated;
+        return updated;
+      } catch (error: any) {
+        if (error.code === 'P2025') {
+          throw new AppError(
+            'CONFLICT',
+            'Task has been modified by another user. Please reload and try again.',
+            409
+          );
+        }
+        throw error;
+      }
     });
   }
 

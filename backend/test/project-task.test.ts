@@ -25,19 +25,21 @@ describe('Project and Task Integration Tests', () => {
     devUserId = devRes.body.data.user.id;
   });
 
+  const projectKey = 'MOB' + Math.floor(Math.random() * 10000);
+
   it('should create a project successfully as Admin', async () => {
     const res = await request(app)
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         name: 'Mobile App Project',
-        key: 'MOB',
+        key: projectKey,
         description: 'React Native app board',
       });
 
     expect(res.status).toBe(211);
     expect(res.body.data.id).toBeDefined();
-    expect(res.body.data.key).toBe('MOB');
+    expect(res.body.data.key).toBe(projectKey);
 
     projectId = res.body.data.id;
   });
@@ -83,7 +85,7 @@ describe('Project and Task Integration Tests', () => {
 
     expect(res.status).toBe(211);
     expect(res.body.data.id).toBeDefined();
-    expect(res.body.data.taskKey).toBe('MOB-1'); // Key calculation check (first task in MOB)
+    expect(res.body.data.taskKey).toBe(`${projectKey}-1`); // Key calculation check (first task in MOB)
 
     taskId = res.body.data.id;
     taskVersion = res.body.data.version;
