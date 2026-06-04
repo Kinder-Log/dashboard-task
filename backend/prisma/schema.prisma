@@ -62,6 +62,7 @@ model User {
   activities                 Activity[]
   watchingTasks              TaskWatcher[]
   securityLogs               SecurityAuditLog[]
+  refreshTokens              RefreshToken[]
 }
 
 model Project {
@@ -300,4 +301,14 @@ model DomainEventLog {
   retryCount     Int      @default(0)
   idempotencyKey String   @unique
   createdAt      DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
