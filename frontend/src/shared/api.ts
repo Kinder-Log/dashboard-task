@@ -1,9 +1,14 @@
 import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
+// In production the frontend and backend live on different domains.
+// VITE_API_URL is set in Vercel env vars → points to the Render backend URL.
+// Locally it stays empty so Vite proxy forwards /api/* to localhost:5001.
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+
 // Create base axios instance
 export const api = axios.create({
-  baseURL: '',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -87,7 +92,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post(
+        const refreshResponse = await api.post(
           '/api/auth/refresh',
           {},
           { withCredentials: true }
