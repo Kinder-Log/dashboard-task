@@ -18,7 +18,15 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-  useTheme
+  useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -29,7 +37,8 @@ import {
   PeopleAltOutlined as PeopleIcon,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
-  LogoutOutlined as LogoutIcon
+  LogoutOutlined as LogoutIcon,
+  LockOutlined as LockIcon
 } from '@mui/icons-material';
 import { useI18n } from '../shared/I18nContext.js';
 
@@ -41,8 +50,51 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ currentMode, onToggleTheme }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, changePassword } = useAuth();
   const navigate = useNavigate();
+
+  // Change Password Dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      setPasswordError(language === 'he' ? 'אנא מלא את כל השדות' : 'Please fill in all fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t('passwordReset.mismatch'));
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError(language === 'he' ? 'הסיסמה חייבת להכיל לפחות 8 תווים' : 'Password must be at least 8 characters long.');
+      return;
+    }
+
+    setPasswordError(null);
+    setPasswordSuccess(null);
+    setPasswordSubmitting(true);
+
+    try {
+      await changePassword(newPassword);
+      setPasswordSuccess(language === 'he' ? 'הסיסמה עודכנה בהצלחה!' : 'Password updated successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setPasswordDialogOpen(false);
+        setPasswordSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      setPasswordError(err.message || (language === 'he' ? 'עדכון הסיסמה נכשל.' : 'Failed to update password.'));
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  };
   const location = useLocation();
   const theme = useTheme();
   const { t, language, setLanguage } = useI18n();
@@ -220,6 +272,13 @@ export const Layout: React.FC<LayoutProps> = ({ currentMode, onToggleTheme }) =>
                 </Box>
               </Box>
               <Divider />
+              <MenuItem onClick={() => { handleMenuClose(); setPasswordDialogOpen(true); }}>
+                <ListItemIcon>
+                  <LockIcon fontSize="small" />
+                </ListItemIcon>
+                {t('passwordReset.title')}
+              </MenuItem>
+              <Divider />
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
                   <LogoutIcon fontSize="small" />
@@ -330,6 +389,102 @@ export const Layout: React.FC<LayoutProps> = ({ currentMode, onToggleTheme }) =>
       <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 10, minWidth: 0 }}>
         <Outlet />
       </Box>
+
+      {/* Change Password Dialog */}
+      <Dialog 
+        open={passwordDialogOpen} 
+        onClose={() => {
+          if (!passwordSubmitting) {
+            setPasswordDialogOpen(false);
+            setPasswordError(null);
+            setPasswordSuccess(null);
+            setNewPassword('');
+            setConfirmPassword('');
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            className: 'glass-panel',
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5)',
+              border: '1px solid',
+              borderColor: 'divider',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          {t('passwordReset.title')}
+        </DialogTitle>
+        <Box component="form" onSubmit={handleChangePasswordSubmit}>
+          <DialogContent sx={{ pt: 1, pb: 2 }}>
+            {passwordError && (
+              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                {passwordError}
+              </Alert>
+            )}
+            {passwordSuccess && (
+              <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+                {passwordSuccess}
+              </Alert>
+            )}
+            <TextField
+              margin="dense"
+              required
+              fullWidth
+              name="newPassword"
+              label={t('passwordReset.newPassword')}
+              type="password"
+              id="newPassword"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={passwordSubmitting}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              margin="dense"
+              required
+              fullWidth
+              name="confirmPassword"
+              label={t('passwordReset.confirmPassword')}
+              type="password"
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={passwordSubmitting}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => {
+                setPasswordDialogOpen(false);
+                setPasswordError(null);
+                setPasswordSuccess(null);
+                setNewPassword('');
+                setConfirmPassword('');
+              }}
+              disabled={passwordSubmitting}
+              color="inherit"
+            >
+              {language === 'he' ? 'ביטול' : 'Cancel'}
+            </Button>
+            <Button 
+              type="submit" 
+              variant="contained" 
+              disabled={passwordSubmitting}
+            >
+              {passwordSubmitting ? (
+                <CircularProgress size={24} sx={{ color: '#ffffff' }} />
+              ) : (
+                t('passwordReset.button')
+              )}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 };

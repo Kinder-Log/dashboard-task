@@ -112,7 +112,7 @@ const AppContent: React.FC = () => {
           <Route 
             path="/login" 
             element={
-              user && !user.changePasswordOnFirstLogin ? (
+              user ? (
                 <Navigate to="/" replace />
               ) : (
                 <LoginPage />

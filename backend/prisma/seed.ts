@@ -100,7 +100,7 @@ async function main() {
       passwordHash: adminPasswordHash,
       role: Role.ADMIN,
       active: true,
-      changePasswordOnFirstLogin: true,
+      changePasswordOnFirstLogin: false,
     },
   });
 

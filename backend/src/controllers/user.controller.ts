@@ -76,7 +76,7 @@ export async function createUser(req: Request, res: Response, next: NextFunction
       email,
       passwordHash,
       role,
-      changePasswordOnFirstLogin: true, // Force change on first login
+      changePasswordOnFirstLogin: false,
     });
 
     res.json({
