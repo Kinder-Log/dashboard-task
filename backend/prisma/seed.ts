@@ -88,7 +88,7 @@ async function main() {
   console.log('Seeding Users...');
   const saltRounds = 12;
   const adminPasswordHash = await bcrypt.hash('admin12345', saltRounds);
-  const pmPasswordHash = await bcrypt.hash('pm12345', saltRounds);
+  const pmPasswordHash = await bcrypt.hash('pm123456', saltRounds);
   const devPasswordHash = await bcrypt.hash('dev12345', saltRounds);
 
   const admin = await prisma.user.upsert({

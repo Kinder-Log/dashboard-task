@@ -86,7 +86,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'strict',
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: SECURITY_CONFIG.JWT_REFRESH_COOKIE_MAX_AGE,
     });
 
@@ -128,7 +128,12 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
         userAgent,
         details: { token },
       });
-      res.clearCookie('refreshToken');
+      const isProd = process.env.NODE_ENV === 'production';
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
+      });
       throw new AppError('UNAUTHORIZED', 'Session compromised. Please log in again.', 401);
     }
 
@@ -169,7 +174,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'strict',
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: SECURITY_CONFIG.JWT_REFRESH_COOKIE_MAX_AGE,
     });
 
@@ -205,7 +210,12 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
       }
     }
 
-    res.clearCookie('refreshToken');
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+    });
     res.json({
       data: {
         message: 'Logged out successfully',
