@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listUsers, createUser, updateUser } from '../controllers/user.controller.js';
+import { listUsers, createUser, updateUser, deleteUser } from '../controllers/user.controller.js';
 import { authenticateJWT, requireRole } from '../middlewares/auth.js';
 import { Role } from '@prisma/client';
 
@@ -12,5 +12,6 @@ router.use(requireRole([Role.ADMIN]));
 router.get('/', listUsers);
 router.post('/', createUser);
 router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 
 export default router;

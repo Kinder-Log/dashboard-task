@@ -195,7 +195,7 @@ model Attachment {
   mimetype   String
   size       Int
   uploaderId String
-  uploader   User     @relation(fields: [uploaderId], references: [id])
+  uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 }
 

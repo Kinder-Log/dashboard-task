@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../shared/api.js';
 import { useI18n } from '../../shared/I18nContext.js';
+import { useAuth } from '../../shared/AuthContext.js';
 import type { User, TaskStatus, Role, Project } from '../../types/index.js';
 import {
   Box,
@@ -47,7 +48,8 @@ import {
 
 export const UsersPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const { user: currentUser } = useAuth();
   const [tabValue, setTabValue] = useState(0);
 
   // Success/Error notifications
@@ -60,6 +62,10 @@ export const UsersPage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<Role>('DEVELOPER');
   const [formError, setFormError] = useState<string | null>(null);
+
+  // User Deletion States
+  const [userToDeleteId, setUserToDeleteId] = useState<string | null>(null);
+  const [confirmDeleteUserOpen, setConfirmDeleteUserOpen] = useState(false);
 
   // Project Form & Management States
   const [projName, setProjName] = useState('');
@@ -120,6 +126,23 @@ export const UsersPage: React.FC = () => {
     onError: (err: any) => {
       setToastSeverity('error');
       setToastMessage(err.response?.data?.error?.message || t('users.updateFailed'));
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => api.delete(`/api/users/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      setToastSeverity('success');
+      setToastMessage(t('users.deletedSuccessfully'));
+      setConfirmDeleteUserOpen(false);
+      setUserToDeleteId(null);
+    },
+    onError: (err: any) => {
+      setToastSeverity('error');
+      setToastMessage(err.response?.data?.error?.message || t('users.deletionFailed'));
+      setConfirmDeleteUserOpen(false);
+      setUserToDeleteId(null);
     },
   });
 
@@ -312,6 +335,7 @@ export const UsersPage: React.FC = () => {
                       <TableCell sx={{ fontWeight: 700 }}>{t('users.emailColumn')}</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>{t('users.role')}</TableCell>
                       <TableCell sx={{ fontWeight: 700 }} align="center">{t('users.status')}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="center">{t('projects.delete')}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -343,6 +367,19 @@ export const UsersPage: React.FC = () => {
                             size="small"
                             onChange={(e) => updateUserMutation.mutate({ userId: u.id, payload: { active: e.target.checked } })}
                           />
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            color="error"
+                            size="small"
+                            disabled={u.id === currentUser?.id}
+                            onClick={() => {
+                              setUserToDeleteId(u.id);
+                              setConfirmDeleteUserOpen(true);
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -597,6 +634,39 @@ export const UsersPage: React.FC = () => {
             onClick={() => {
               if (projectToDeleteId) deleteProjectMutation.mutate(projectToDeleteId);
             }}
+          >
+            {t('projects.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Delete User Dialog */}
+      <Dialog
+        open={confirmDeleteUserOpen}
+        onClose={() => setConfirmDeleteUserOpen(false)}
+        slotProps={{
+          paper: {
+            className: 'glass-panel',
+            sx: { borderRadius: 3, border: '1px solid', borderColor: 'divider' }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('users.confirmDeleteTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText color="text.secondary">
+            {t('users.confirmDeleteBody')}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setConfirmDeleteUserOpen(false)} color="inherit">
+            {language === 'he' ? 'ביטול' : 'Cancel'}
+          </Button>
+          <Button
+            onClick={() => userToDeleteId && deleteUserMutation.mutate(userToDeleteId)}
+            color="error"
+            variant="contained"
+            disabled={deleteUserMutation.isPending}
+            startIcon={deleteUserMutation.isPending ? <CircularProgress size={18} sx={{ color: '#ffffff' }} /> : <DeleteIcon />}
           >
             {t('projects.delete')}
           </Button>

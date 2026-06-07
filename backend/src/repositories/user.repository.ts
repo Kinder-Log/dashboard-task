@@ -6,6 +6,7 @@ export interface IUserRepository {
   findById(id: string): Promise<User | null>;
   create(data: Prisma.UserCreateInput): Promise<User>;
   update(id: string, data: Prisma.UserUpdateInput): Promise<User>;
+  delete(id: string): Promise<User>;
   list(skip: number, take: number, active?: boolean): Promise<{ users: User[]; total: number }>;
 }
 
@@ -32,6 +33,12 @@ export class UserRepository implements IUserRepository {
     return prisma.user.update({
       where: { id },
       data,
+    });
+  }
+
+  public async delete(id: string): Promise<User> {
+    return prisma.user.delete({
+      where: { id },
     });
   }
 

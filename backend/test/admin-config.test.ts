@@ -5,6 +5,7 @@ import app from '../src/app.ts';
 describe('Admin Configurations Integration Tests', () => {
   let adminToken = '';
   let devToken = '';
+  let createdUserId = '';
 
   it('should authenticate admin and developer users', async () => {
     // Admin login
@@ -52,6 +53,41 @@ describe('Admin Configurations Integration Tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.email).toBe(uniqueEmail);
+      createdUserId = res.body.data.id;
+    });
+
+    it('should prevent developer from deleting a user', async () => {
+      const res = await request(app)
+        .delete(`/api/users/${createdUserId}`)
+        .set('Authorization', `Bearer ${devToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it('should prevent admin from deleting themselves', async () => {
+      // Fetch admin user ID
+      const profileRes = await request(app)
+        .get('/api/users')
+        .set('Authorization', `Bearer ${adminToken}`);
+      
+      const adminUser = profileRes.body.data.find((u: any) => u.email === 'admin@example.com');
+      expect(adminUser).toBeDefined();
+
+      const res = await request(app)
+        .delete(`/api/users/${adminUser.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toBe('You cannot delete yourself');
+    });
+
+    it('should allow admin to delete another user', async () => {
+      const res = await request(app)
+        .delete(`/api/users/${createdUserId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.message).toBe('User deleted successfully');
     });
   });
 

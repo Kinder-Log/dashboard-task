@@ -131,3 +131,29 @@ export async function updateUser(req: Request, res: Response, next: NextFunction
     next(error);
   }
 }
+
+export async function deleteUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user?.userId;
+
+    if (currentUserId === id) {
+      throw new AppError('VALIDATION_ERROR', 'You cannot delete yourself', 400);
+    }
+
+    const existing = await userRepository.findById(id);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 'User not found', 404);
+    }
+
+    await userRepository.delete(id);
+
+    res.json({
+      data: {
+        message: 'User deleted successfully',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
