@@ -207,6 +207,16 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.keyInvalid': 'Key must be alphanumeric, 2-10 characters.',
     'projects.nameAndKeyRequired': 'Project name and key are required.',
     'projects.noProjects': 'No projects found. Create your first project.',
+    'projects.manageMembers': 'Manage Members',
+    'projects.memberAddedSuccessfully': 'Member added successfully.',
+    'projects.memberAddFailed': 'Failed to add project member.',
+    'projects.memberRemovedSuccessfully': 'Member removed successfully.',
+    'projects.memberRemoveFailed': 'Failed to remove project member.',
+    'projects.projectMembers': 'Project Members',
+    'projects.currentMembers': 'Current Members',
+    'projects.addMember': 'Add Member',
+    'projects.selectUser': 'Select User',
+    'projects.remove': 'Remove',
   },
   he: {
     // Auth / Login page
@@ -404,6 +414,16 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.keyInvalid': 'המפתח חייב להכיל בין 2 ל-10 תווים באנגלית/מספרים בלבד.',
     'projects.nameAndKeyRequired': 'שם ומפתח הפרויקט הם שדות חובה.',
     'projects.noProjects': 'לא נמצאו פרויקטים. צור את הפרויקט הראשון שלך.',
+    'projects.manageMembers': 'ניהול חברי פרויקט',
+    'projects.memberAddedSuccessfully': 'חבר הפרויקט נוסף בהצלחה.',
+    'projects.memberAddFailed': 'הוספת חבר הפרויקט נכשלה.',
+    'projects.memberRemovedSuccessfully': 'חבר הפרויקט הוסר בהצלחה.',
+    'projects.memberRemoveFailed': 'הסרת חבר הפרויקט נכשלה.',
+    'projects.projectMembers': 'חברי פרויקט',
+    'projects.currentMembers': 'חברים רשומים',
+    'projects.addMember': 'הוספת חבר',
+    'projects.selectUser': 'בחר משתמש',
+    'projects.remove': 'הסרה',
   }
 };
 

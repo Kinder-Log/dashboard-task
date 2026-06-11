@@ -44,6 +44,7 @@ import {
   Save as SaveIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  People as PeopleIcon,
 } from '@mui/icons-material';
 
 export const UsersPage: React.FC = () => {
@@ -79,7 +80,7 @@ export const UsersPage: React.FC = () => {
   const { data: usersRes, isLoading: loadingUsers } = useQuery({
     queryKey: ['adminUsers'],
     queryFn: () => api.get('/api/users').then((res) => res.data),
-    enabled: tabValue === 0,
+    enabled: tabValue === 0 || tabValue === 2,
   });
   const users: User[] = usersRes?.data || [];
 
@@ -190,6 +191,48 @@ export const UsersPage: React.FC = () => {
       setProjectToDeleteId(null);
       setToastSeverity('error');
       setToastMessage(err.response?.data?.error?.message || t('projects.deletionFailed'));
+    },
+  });
+
+  // Project member management state & queries
+  const [memberMgmtProject, setMemberMgmtProject] = useState<Project | null>(null);
+  const [selectedUserToAdd, setSelectedUserToAdd] = useState<string>('');
+
+  const { data: projectDetailsRes, refetch: refetchProjectDetails } = useQuery({
+    queryKey: ['projectDetails', memberMgmtProject?.id],
+    queryFn: () => api.get(`/api/projects/${memberMgmtProject?.id}`).then((res) => res.data),
+    enabled: !!memberMgmtProject?.id,
+  });
+  const projectDetails = projectDetailsRes?.data;
+
+  const addMemberMutation = useMutation({
+    mutationFn: (userId: string) =>
+      api.post(`/api/projects/${memberMgmtProject?.id}/members`, { userId }),
+    onSuccess: () => {
+      refetchProjectDetails();
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setSelectedUserToAdd('');
+      setToastSeverity('success');
+      setToastMessage(t('projects.memberAddedSuccessfully'));
+    },
+    onError: (err: any) => {
+      setToastSeverity('error');
+      setToastMessage(err.response?.data?.error?.message || t('projects.memberAddFailed'));
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) =>
+      api.delete(`/api/projects/${memberMgmtProject?.id}/members/${userId}`),
+    onSuccess: () => {
+      refetchProjectDetails();
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setToastSeverity('success');
+      setToastMessage(t('projects.memberRemovedSuccessfully'));
+    },
+    onError: (err: any) => {
+      setToastSeverity('error');
+      setToastMessage(err.response?.data?.error?.message || t('projects.memberRemoveFailed'));
     },
   });
 
@@ -596,16 +639,26 @@ export const UsersPage: React.FC = () => {
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => {
-                                setProjectToDeleteId(p.id);
-                                setConfirmDeleteOpen(true);
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                title={t('projects.manageMembers')}
+                                onClick={() => setMemberMgmtProject(p)}
+                              >
+                                <PeopleIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => {
+                                  setProjectToDeleteId(p.id);
+                                  setConfirmDeleteOpen(true);
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ))
@@ -669,6 +722,134 @@ export const UsersPage: React.FC = () => {
             startIcon={deleteUserMutation.isPending ? <CircularProgress size={18} sx={{ color: '#ffffff' }} /> : <DeleteIcon />}
           >
             {t('projects.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Project Member Management Dialog */}
+      <Dialog
+        open={Boolean(memberMgmtProject)}
+        onClose={() => setMemberMgmtProject(null)}
+        fullWidth
+        maxWidth="sm"
+        slotProps={{
+          paper: {
+            className: 'glass-panel',
+            sx: { borderRadius: 3, border: '1px solid', borderColor: 'divider' }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          {t('projects.projectMembers')}: {memberMgmtProject?.name} ({memberMgmtProject?.key})
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+            
+            {/* Add Member form section */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="add-member-select-label">{t('projects.selectUser')}</InputLabel>
+                <Select
+                  labelId="add-member-select-label"
+                  value={selectedUserToAdd}
+                  label={t('projects.selectUser')}
+                  onChange={(e) => setSelectedUserToAdd(e.target.value)}
+                >
+                  <MenuItem value=""><em>{t('projects.selectUser')}...</em></MenuItem>
+                  {users
+                    .filter((u) => {
+                      // Filter out users who are already members
+                      const isMember = (projectDetails?.members || []).some(
+                        (m: any) => m.userId === u.id
+                      );
+                      return !isMember;
+                    })
+                    .map((u) => (
+                      <MenuItem key={u.id} value={u.id}>
+                        {u.name} ({u.email}) [{u.role}]
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  if (selectedUserToAdd) {
+                    addMemberMutation.mutate(selectedUserToAdd);
+                  }
+                }}
+                disabled={!selectedUserToAdd || addMemberMutation.isPending}
+                startIcon={addMemberMutation.isPending ? <CircularProgress size={16} /> : <AddIcon />}
+              >
+                {t('projects.addMember')}
+              </Button>
+            </Box>
+
+            {/* Current Members List table */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
+                {t('projects.currentMembers')}
+              </Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>{t('users.userColumn')}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{t('projects.role')}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="center">{t('users.actions')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(projectDetails?.members || []).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                          {language === 'he' ? 'אין חברי פרויקט רשומים' : 'No project members registered'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      (projectDetails?.members || []).map((m: any) => (
+                        <TableRow key={m.id}>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                              <Avatar sx={{ width: 24, height: 24, fontSize: '0.8rem' }}>
+                                {m.user.name.charAt(0)}
+                              </Avatar>
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{m.user.name}</Typography>
+                                <Typography variant="caption" color="text.secondary">{m.user.email}</Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={m.user.role}
+                              size="small"
+                              variant="outlined"
+                              color={m.user.role === 'ADMIN' ? 'error' : m.user.role === 'PROJECT_MANAGER' ? 'primary' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => removeMemberMutation.mutate(m.userId)}
+                              disabled={removeMemberMutation.isPending}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setMemberMgmtProject(null)} variant="outlined">
+            {language === 'he' ? 'סגור' : 'Close'}
           </Button>
         </DialogActions>
       </Dialog>
