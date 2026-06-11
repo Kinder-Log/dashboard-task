@@ -136,18 +136,22 @@ export class TaskService {
     // 1. Authorize access & operations permissions
     const task = await authorizationService.authorizeTaskAccess(ctx, id, 'TASK_UPDATE');
 
-    // 2. Role restriction on properties: Developer can only update own assigned tasks or self-assign unassigned tasks
+    // 2. Role restriction on properties: Developer can assign tasks to anyone, but can only update details of their own tasks or tasks they are self-assigning
     if (ctx.role === Role.DEVELOPER) {
-      const isSelfAssigningUnassigned = task.assigneeId === null && dto.assigneeId === ctx.userId;
+      const isSelfAssigning = dto.assigneeId === ctx.userId;
       const isOwnTask = task.assigneeId === ctx.userId;
 
-      if (!isOwnTask && !isSelfAssigningUnassigned) {
-        throw new AppError('FORBIDDEN', 'Access denied: developers can only update tasks assigned to them or self-assign unassigned tasks', 403);
-      }
-
-      // Prevent developers from assigning to others: assigneeId must be ctx.userId, null (unassign), or undefined (no change)
-      if (dto.assigneeId !== undefined && dto.assigneeId !== ctx.userId && dto.assigneeId !== null) {
-        throw new AppError('FORBIDDEN', 'Access denied: developers cannot assign tasks to others', 403);
+      if (!isOwnTask && !isSelfAssigning) {
+        const hasOtherUpdates = 
+          dto.title !== undefined ||
+          dto.description !== undefined ||
+          dto.type !== undefined ||
+          dto.priority !== undefined ||
+          dto.source !== undefined;
+        
+        if (hasOtherUpdates) {
+          throw new AppError('FORBIDDEN', 'Access denied: developers can only update details of tasks assigned to them', 403);
+        }
       }
       
       // Developers cannot change estimation, due date, or project details

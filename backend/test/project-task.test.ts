@@ -6,6 +6,7 @@ describe('Project and Task Integration Tests', () => {
   let adminToken = '';
   let devToken = '';
   let devUserId = '';
+  let dev2UserId = '';
   let projectId = '';
   let taskId = '';
   let taskVersion = 1;
@@ -60,6 +61,7 @@ describe('Project and Task Integration Tests', () => {
       .post('/api/auth/login')
       .send({ email: 'dev2@example.com', password: 'dev12345' });
     const dev2Token = dev2Res.body.data.accessToken;
+    dev2UserId = dev2Res.body.data.user.id;
 
     const res = await request(app)
       .get(`/api/tasks?projectId=${projectId}`)
@@ -159,18 +161,53 @@ describe('Project and Task Integration Tests', () => {
     taskVersion = res.body.data.version;
   });
 
-  it('should prevent developer from assigning task to another user', async () => {
-    const randomUuid = '00000000-0000-0000-0000-000000000000';
+  it('should allow developer to assign task to another project member', async () => {
+    // 1. Add dev2 to project members using Admin token
+    const addRes = await request(app)
+      .post(`/api/projects/${projectId}/members`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ userId: dev2UserId });
+    expect(addRes.status).toBe(200);
+
+    // 2. Dev1 assigns the task to Dev2
     const res = await request(app)
       .patch(`/api/tasks/${taskId}`)
       .set('Authorization', `Bearer ${devToken}`)
       .send({
-        assigneeId: randomUuid,
+        assigneeId: dev2UserId,
+        version: taskVersion,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assigneeId).toBe(dev2UserId);
+    taskVersion = res.body.data.version;
+  });
+
+  it('should prevent developer from editing task details when task is assigned to another user', async () => {
+    const res = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        description: 'Developer 1 trying to edit Developer 2 task details',
         version: taskVersion,
       });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('should allow developer to self-assign a task assigned to someone else', async () => {
+    const res = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        assigneeId: devUserId,
+        version: taskVersion,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assigneeId).toBe(devUserId);
+    taskVersion = res.body.data.version;
   });
 
   it('should prevent developer from editing task description when task is unassigned', async () => {
