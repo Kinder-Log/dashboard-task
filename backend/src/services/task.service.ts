@@ -24,11 +24,11 @@ export interface CreateTaskDto {
 export interface UpdateTaskDto {
   title?: string;
   description?: string;
-  assigneeId?: string;
+  assigneeId?: string | null;
   type?: TaskType;
   priority?: TaskPriority;
   estimatedHours?: number;
-  dueDate?: Date;
+  dueDate?: Date | null;
   source?: string;
 }
 
@@ -136,10 +136,18 @@ export class TaskService {
     // 1. Authorize access & operations permissions
     const task = await authorizationService.authorizeTaskAccess(ctx, id, 'TASK_UPDATE');
 
-    // 2. Role restriction on properties: Developer can only update own assigned tasks
+    // 2. Role restriction on properties: Developer can only update own assigned tasks or self-assign unassigned tasks
     if (ctx.role === Role.DEVELOPER) {
-      if (task.assigneeId !== ctx.userId) {
-        throw new AppError('FORBIDDEN', 'Access denied: developers can only update tasks assigned to them', 403);
+      const isSelfAssigningUnassigned = task.assigneeId === null && dto.assigneeId === ctx.userId;
+      const isOwnTask = task.assigneeId === ctx.userId;
+
+      if (!isOwnTask && !isSelfAssigningUnassigned) {
+        throw new AppError('FORBIDDEN', 'Access denied: developers can only update tasks assigned to them or self-assign unassigned tasks', 403);
+      }
+
+      // Prevent developers from assigning to others: assigneeId must be ctx.userId, null (unassign), or undefined (no change)
+      if (dto.assigneeId !== undefined && dto.assigneeId !== ctx.userId && dto.assigneeId !== null) {
+        throw new AppError('FORBIDDEN', 'Access denied: developers cannot assign tasks to others', 403);
       }
       
       // Developers cannot change estimation, due date, or project details
@@ -168,7 +176,7 @@ export class TaskService {
       type: dto.type,
       priority: dto.priority,
       estimatedHours: dto.estimatedHours,
-      dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      dueDate: dto.dueDate === null ? null : (dto.dueDate ? new Date(dto.dueDate) : undefined),
       source: dto.source,
     });
 

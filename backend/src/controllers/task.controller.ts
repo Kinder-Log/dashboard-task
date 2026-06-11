@@ -141,8 +141,8 @@ export async function updateTask(req: Request, res: Response, next: NextFunction
       id,
       {
         ...updateFields,
-        dueDate: updateFields.dueDate ? new Date(updateFields.dueDate) : undefined,
-        assigneeId: updateFields.assigneeId === null ? undefined : updateFields.assigneeId,
+        dueDate: updateFields.dueDate === null ? null : (updateFields.dueDate ? new Date(updateFields.dueDate) : undefined),
+        assigneeId: updateFields.assigneeId,
       },
       version
     );

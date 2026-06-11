@@ -131,6 +131,84 @@ describe('Project and Task Integration Tests', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
+  it('should allow assigned developer to unassign themselves', async () => {
+    const res = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        assigneeId: null,
+        version: taskVersion,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assigneeId).toBeNull();
+    taskVersion = res.body.data.version;
+  });
+
+  it('should allow developer to self-assign an unassigned task', async () => {
+    const res = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        assigneeId: devUserId,
+        version: taskVersion,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assigneeId).toBe(devUserId);
+    taskVersion = res.body.data.version;
+  });
+
+  it('should prevent developer from assigning task to another user', async () => {
+    const randomUuid = '00000000-0000-0000-0000-000000000000';
+    const res = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        assigneeId: randomUuid,
+        version: taskVersion,
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('should prevent developer from editing task description when task is unassigned', async () => {
+    // 1. Unassign task first
+    const unassignRes = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        assigneeId: null,
+        version: taskVersion,
+      });
+    expect(unassignRes.status).toBe(200);
+    taskVersion = unassignRes.body.data.version;
+
+    // 2. Try to edit description as dev
+    const res = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        description: 'Trying to update description of unassigned task',
+        version: taskVersion,
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+
+    // 3. Assign back to dev
+    const assignBackRes = await request(app)
+      .patch(`/api/tasks/${taskId}`)
+      .set('Authorization', `Bearer ${devToken}`)
+      .send({
+        assigneeId: devUserId,
+        version: taskVersion,
+      });
+    expect(assignBackRes.status).toBe(200);
+    taskVersion = assignBackRes.body.data.version;
+  });
+
   it('should deny task deletion to developer user', async () => {
     const res = await request(app)
       .delete(`/api/tasks/${taskId}`)
